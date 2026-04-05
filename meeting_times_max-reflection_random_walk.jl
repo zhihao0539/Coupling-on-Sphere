@@ -45,4 +45,4 @@ end
 
 meeting_time_ste = sqrt.(var_meeting_times ./ N)
 
-save("mr_random_walk_meeting_times.jld", "N", N, "ds", ds, "num_hs", num_hs, "meeting_times", meeting_times, "var_meeting_times", var_meeting_times)
+save("data/mr_random_walk_meeting_times.jld", "N", N, "ds", ds, "num_hs", num_hs, "meeting_times", meeting_times, "var_meeting_times", var_meeting_times)
