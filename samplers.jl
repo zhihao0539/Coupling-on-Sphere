@@ -59,6 +59,23 @@ function sdist(x,y)
 	return acos(max(min(dot(x,y), 1.), -1.))
 end
 
+function stereo_projection(x; R)
+	return  R .* @view(x[1:end-1])./ (1 - x[end])
+end
+
+function spherical_log_accept_ratio(x, x_prop, log_density, R, d)
+	"""
+	Logarithm of the acceptance ratio on the sphere
+	"""
+	return log_density(stereo_projection(x_prop; R = R)) - log_density(stereo_projection(x; R = R)) + d*(log(1 - x[end]) - log(1-x_prop[end]))
+end
+
+
+
+"""
+Defining functions for one step of the random walk and coupled random walks on the sphere
+"""
+
 function stereo_rw_step!(x, h, G)
 	"""
 
@@ -68,7 +85,7 @@ function stereo_rw_step!(x, h, G)
 	return x
 end
 
-function parallel_coupling_step!(x, y, G, G̃, h, RNG)
+function parallel_coupling_step!(x, y, G, G̃, h)
 	"""
 
 	"""
@@ -82,7 +99,7 @@ function parallel_coupling_step!(x, y, G, G̃, h, RNG)
 	return x, y
 end
 
-function reflection_coupling_step!(x, y, G, G̃, h, RNG)
+function reflection_coupling_step!(x, y, G, G̃, h)
 	"""
 
 	"""
@@ -101,7 +118,7 @@ end
 	Compute logarithm of the ratio of Q(y, X_new) and Q(x, X_new) where Q is the transition density
 	of the stereo random walk with step size h and dimension d.
 	"""
-	return dot(y, X_new) >= 0 ? (d+1)*log(dot(x, X_new)/dot(y, X_new)) + (1/dot(x, X_new)^2 - 1/dot(y, X_new)^2)/(2h^2) : -Inf
+	return dot(y, X_new) > 0 ? (d+1)*log(dot(x, X_new)/dot(y, X_new)) + (1/dot(x, X_new)^2 - 1/dot(y, X_new)^2)/(2h^2) : -Inf
 end
 
 function max_reflection_coupling_step!(x, y, X_new, G, G̃, h, d, RNG)
@@ -111,6 +128,7 @@ function max_reflection_coupling_step!(x, y, X_new, G, G̃, h, d, RNG)
 	G .-= dot(G, x) .* x #projecting noise onto tangent space of x
 	G̃ .= M(x, y, G) #parallel transporting noise to tangent space of y and reflecting it
 
+	X_new .= x
 	X_new .+= h .* G
 	normalize!(X_new)
 
@@ -125,4 +143,64 @@ function max_reflection_coupling_step!(x, y, X_new, G, G̃, h, d, RNG)
 	x .= X_new
 
 	return x, y
+end
+
+
+"""
+Metreopolised transition steps
+"""
+
+function stereo_MH_step!(x, x_prop, G, h, d, R, log_density, RNG)
+	stereo_rw_step!(x_prop, h, G) #proposed move
+
+	if randexp(RNG) >= -spherical_log_accept_ratio(x, x_prop, log_density, R, d)
+		x .= x_prop #accept move
+	else
+		x_prop .= x #reject move
+	end
+	return x, x_prop
+end
+
+
+function sync_coupled_MH_step!(x, x_prop, y, y_prop, G, G̃, h, d, R, log_density, RNG)
+	parallel_coupling_step!(x, y, G, G̃, h) #proposed move
+
+	E = randexp(RNG)
+
+	if E >= -spherical_log_accept_ratio(x, x_prop, log_density, R, d)
+		x .= x_prop #accept move
+	else
+		x_prop .= x #reject move
+	end
+	if E >= -spherical_log_accept_ratio(y, y_prop, log_density, R, d)
+		y .= y_prop #accept move
+	else
+		y_prop .= y #reject move
+	end
+	
+	return x, x_prop, y, y_prop
+end
+
+function coupled_MH_step!(x, x_prop, y, y_prop, X_new, G, G̃, h, d, R, log_density, RNG)
+	max_reflection_coupling_step!(x_prop, y_prop, X_new, G, G̃, h, d, RNG) #proposed move
+
+	E = randexp(RNG)
+
+	x_accepted = false
+	y_accepted = false
+
+	if E >= -spherical_log_accept_ratio(x, x_prop, log_density, R, d)
+		x .= x_prop #accept move
+		x_accepted = true
+	else
+		x_prop .= x #reject move
+	end
+	if E >= -spherical_log_accept_ratio(y, y_prop, log_density, R, d)
+		y .= y_prop #accept move
+		y_accepted = true
+	else
+		y_prop .= y #reject move
+	end
+
+	return x_accepted, y_accepted
 end
