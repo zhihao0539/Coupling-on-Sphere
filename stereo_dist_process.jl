@@ -114,11 +114,11 @@ function sim_meeting_times(N, h, d)
 
 	Threads.@threads for i in tqdm(axes(τs, 1))
 		RNG = Xoshiro(i)
-		x = normalize(randn(RNG, d))
+		x = normalize(randn(RNG, d+1))
 		X_new = copy(x)
 		y = -copy(x)
-		G = randn(RNG, d)
-		G̃ = randn(RNG, d)
+		G = randn(RNG, d+1)
+		G̃ = randn(RNG, d+1)
 		k = 0
 		while x != y
 			max_reflection_coupling_step!(x, y, X_new, G, G̃, h, d, RNG)
