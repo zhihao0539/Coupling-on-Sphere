@@ -29,14 +29,14 @@ end
 
 N = 1_000_000
 ds = [5, 10, 20, 30, 40, 50, 75, 100, 200, 300, 500, 1000]
-num_hs = 11
+num_hs = 101
 meeting_times = zeros(length(ds), num_hs)
 var_meeting_times = zeros(length(ds), num_hs)
 
-progress_iterable = tqdm(enumerate(ds))
-for (i, d) in progress_iterable
+for (i, d) in enumerate(ds)
+	progress_iterable = tqdm(enumerate(exp.(LinRange(-1.5, -0.5, num_hs) .* log(d+1))))
 	set_postfix(progress_iterable, d = d)
-	for (j, h) in enumerate(exp.(LinRange(-1.5*log(d+1), -0.5*log(d+1), num_hs)))
+	for (j, h) in progress_iterable
 		τ = sim_meeting_times(N, h, d)
 		meeting_times[i, j] = mean(τ)
 		var_meeting_times[i, j] = var(τ)
