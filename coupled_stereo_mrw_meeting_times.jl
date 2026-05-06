@@ -27,6 +27,7 @@ function sim_meeting_times(N, h, d, R, log_density; max_iter = 1e6)
 		x_acceptance_count = 0.
 		y_acceptance_count = 0.
 		while x != y && k <= max_iter
+			randn!(RNG, G)
 			x_accepted, y_accepted = coupled_MH_step!(x, x_prop, y, y_prop, X_new, G, G̃, h, d, R, log_density, RNG)
 			k += 1
 			x_acceptance_count += x_accepted

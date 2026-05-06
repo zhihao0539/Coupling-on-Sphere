@@ -18,6 +18,7 @@ function sim_meeting_times(N, h, d)
 		G̃ = randn(RNG, d+1)
 		k = 0
 		while x != y
+			randn!(RNG, G)
 			max_reflection_coupling_step!(x, y, X_new, G, G̃, h, d, RNG)
 			k += 1
 		end
