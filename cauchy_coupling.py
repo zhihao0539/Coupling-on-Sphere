@@ -9,190 +9,187 @@ from geomstats.geometry.hypersphere import Hypersphere
 import pandas as pd
 
 
-# def log_density(x, loc=None, sigma=1.0):
-#     """
-#     Multivariate Cauchy log-density up to an additive constant.
-#     """
-#     x = np.atleast_1d(x)
+def log_density(x, loc=None, sigma=1.0):
+    """
+    Multivariate Cauchy log-density up to an additive constant.
+    """
+    x = np.atleast_1d(x)
 
-#     if loc is None:
-#         loc = np.zeros_like(x)
-#     else:
-#         loc = np.asarray(loc, dtype=float)
+    if loc is None:
+        loc = np.zeros_like(x)
+    else:
+        loc = np.asarray(loc, dtype=float)
 
-#     if loc.shape != x.shape:
-#         raise ValueError("loc must have the same shape as x.")
+    if loc.shape != x.shape:
+        raise ValueError("loc must have the same shape as x.")
 
-#     if sigma <= 0:
-#         raise ValueError("sigma must be positive.")
+    if sigma <= 0:
+        raise ValueError("sigma must be positive.")
 
-#     d = x.shape[0]
+    d = x.shape[0]
 
-#     y = (x - loc) / sigma
-#     norm_sq = np.dot(y, y)
+    y = (x - loc) / sigma
+    norm_sq = np.dot(y, y)
 
-#     return -0.5 * (d + 1) * np.log1p(norm_sq)
-
-
-# def scs_centered_to_euclidean(samples, R, o):
-#     """
-#     Convert SCS samples from the centered sphere BS^d to R^d.
-
-#     The SCS chain lives on the centered sphere.
-#     To apply the sub-Cauchy projection, we first shift back by e_{d+1}.
-#     """
-#     samples = np.asarray(samples)
-#     d = samples.shape[1] - 1
-
-#     e = np.zeros(d + 1)
-#     e[-1] = 1.0
-
-#     x_samples = np.array([
-#         sub_Cauchy_algs.sub_cauchy_projection(z + e, R, o)
-#         for z in samples
-#     ])
-
-#     return x_samples
+    return -0.5 * (d + 1) * np.log1p(norm_sq)
 
 
-# d = 20
-# R = np.sqrt(d)
-# S = Hypersphere(dim=d)
+def scs_centered_to_euclidean(samples, R, o):
+    """
+    Convert SCS samples from the centered sphere BS^d to R^d.
 
-# loc_cauchy = 1 * np.ones(d)
+    The SCS chain lives on the centered sphere.
+    To apply the sub-Cauchy projection, we first shift back by e_{d+1}.
+    """
+    samples = np.asarray(samples)
+    d = samples.shape[1] - 1
 
-# def target_log_density(x):
-#     return log_density(x, loc=loc_cauchy, sigma=1.0)
+    e = np.zeros(d + 1)
+    e[-1] = 1.0
 
-# n_samples = int(1e4)
-# n_rep = 1000
+    x_samples = np.array([
+        sub_Cauchy_algs.sub_cauchy_projection(z + e, R, o)
+        for z in samples
+    ])
 
-# proposal_std_eu = 2.5
-# proposal_std_scs = 1
-
-# tol = 1e-12
-
-# # --------------------------------------------------
-# # Observer for SCS
-# # --------------------------------------------------
-# # Need ||o - e_{d+1}|| <= 1 and o_{d+1} > 0.
-# o = np.zeros(d + 1)
-# o[-1] = 1.5
-
-# e = np.zeros(d + 1)
-# e[-1] = 1.0
-
-# meeting_times_eu = []
-# meeting_times_scs = []
-
-# eu_accept_rates = []
-# scs_accept_rates = []
-
-# scs_stepout_rates = []
-
-# for rep in range(n_rep):
-
-#     # -----------------------------
-#     # Initial points in R^d
-#     # -----------------------------
-#     x = 10 * np.random.randn(d)
-#     y = 10 * np.random.randn(d)
-
-#     # ==================================================
-#     # 1. Euclidean coupling
-#     # ==================================================
-#     eu_sample1, eu_sample2, eu_acc1, eu_acc2 = euclidean_algs.MRCoupling_sampler(
-#         n_samples,
-#         proposal_std_eu,
-#         x.copy(),
-#         y.copy(),
-#         target_log_density,
-#         d
-#     )
-
-#     dist_eu = np.linalg.norm(eu_sample1 - eu_sample2, axis=1)
-#     meet_indices_eu = np.where(dist_eu <= tol)[0]
-
-#     if len(meet_indices_eu) > 0:
-#         meeting_times_eu.append(meet_indices_eu[0])
-#     else:
-#         meeting_times_eu.append(np.inf)
-
-#     eu_accept_rates.append((eu_acc1, eu_acc2))
-
-#     # ==================================================
-#     # 2. Sub-Cauchy coupling
-#     # ==================================================
-#     # inverse_sub_cauchy_projection maps R^d to the shifted sphere
-#     # \widetilde{S}^d, so subtract e_{d+1} to get centered S^d.
-#     z1_scs_tilde = sub_Cauchy_algs.inverse_sub_cauchy_projection(x, R, o)
-#     z2_scs_tilde = sub_Cauchy_algs.inverse_sub_cauchy_projection(y, R, o)
-
-#     z1_scs = z1_scs_tilde - e
-#     z2_scs = z2_scs_tilde - e
-
-#     (
-#         scs_sample1,
-#         scs_sample2,
-#         scs_acc1,
-#         scs_acc2,
-#         scs_stepout1,
-#         scs_stepout2,
-#     ) = sub_Cauchy_algs.SCS_MRCoupling_sampler(
-#         n_samples,
-#         proposal_std_scs,
-#         R,
-#         S,
-#         o,
-#         z1_scs.copy(),
-#         z2_scs.copy(),
-#         target_log_density,
-#         d
-#     )
-
-#     # Project SCS samples back to R^d
-#     scs_sample1 = scs_centered_to_euclidean(scs_sample1, R, o)
-#     scs_sample2 = scs_centered_to_euclidean(scs_sample2, R, o)
-
-#     dist_scs = np.linalg.norm(scs_sample1 - scs_sample2, axis=1)
-#     meet_indices_scs = np.where(dist_scs <= tol)[0]
-
-#     if len(meet_indices_scs) > 0:
-#         meeting_times_scs.append(meet_indices_scs[0])
-#     else:
-#         meeting_times_scs.append(np.inf)
-
-#     scs_accept_rates.append((scs_acc1, scs_acc2))
-#     scs_stepout_rates.append((scs_stepout1, scs_stepout2))
-
-#     if (rep + 1) % 50 == 0:
-#         print(f"Finished {rep + 1}/{n_rep} repetitions")
+    return x_samples
 
 
-# meeting_times_eu = np.array(meeting_times_eu)
-# meeting_times_scs = np.array(meeting_times_scs)
+d = 20
+R = np.sqrt(d)
+S = Hypersphere(dim=d)
 
-# results = pd.DataFrame({
-#     "meeting_time_eu": meeting_times_eu,
-#     "meeting_time_scs": meeting_times_scs,
+loc_cauchy = 1 * np.ones(d)
 
-#     "eu_acc1": [a[0] for a in eu_accept_rates],
-#     "eu_acc2": [a[1] for a in eu_accept_rates],
+def target_log_density(x):
+    return log_density(x, loc=loc_cauchy, sigma=1.0)
 
-#     "scs_acc1": [a[0] for a in scs_accept_rates],
-#     "scs_acc2": [a[1] for a in scs_accept_rates],
+n_samples = int(1e4)
+n_rep = 1000
 
-#     "scs_stepout1": [a[0] for a in scs_stepout_rates],
-#     "scs_stepout2": [a[1] for a in scs_stepout_rates],
-# })
+proposal_std_eu = 2.5
+proposal_std_scs = 1
 
-# results.to_csv(
-#     "/Users/bsc944/Documents/Unbiased MCMC/cauchy_coupling_tau.csv",
-#     index=False
-# )
+tol = 1e-12
 
-# print("Saved results.")
-# print(results.describe())
+# --------------------------------------------------
+# Observer for SCS
+# --------------------------------------------------
+# Need ||o - e_{d+1}|| <= 1 and o_{d+1} > 0.
+o = np.zeros(d + 1)
+o[-1] = 1.5
+
+e = np.zeros(d + 1)
+e[-1] = 1.0
+
+meeting_times_eu = []
+meeting_times_scs = []
+
+eu_accept_rates = []
+scs_accept_rates = []
+
+scs_stepout_rates = []
+
+for rep in range(n_rep):
+
+    # -----------------------------
+    # Initial points in R^d
+    # -----------------------------
+    x = 10 * np.random.randn(d)
+    y = 10 * np.random.randn(d)
+
+    # ==================================================
+    # 1. Euclidean coupling
+    # ==================================================
+    eu_sample1, eu_sample2, eu_acc1, eu_acc2 = euclidean_algs.MRCoupling_sampler(
+        n_samples,
+        proposal_std_eu,
+        x.copy(),
+        y.copy(),
+        target_log_density,
+        d
+    )
+
+    dist_eu = np.linalg.norm(eu_sample1 - eu_sample2, axis=1)
+    meet_indices_eu = np.where(dist_eu <= tol)[0]
+
+    if len(meet_indices_eu) > 0:
+        meeting_times_eu.append(meet_indices_eu[0])
+    else:
+        meeting_times_eu.append(np.inf)
+
+    eu_accept_rates.append((eu_acc1, eu_acc2))
+
+    # ==================================================
+    # 2. Sub-Cauchy coupling
+    # ==================================================
+    # inverse_sub_cauchy_projection maps R^d to the shifted sphere
+    # \widetilde{S}^d, so subtract e_{d+1} to get centered S^d.
+    z1_scs_tilde = sub_Cauchy_algs.inverse_sub_cauchy_projection(x, R, o)
+    z2_scs_tilde = sub_Cauchy_algs.inverse_sub_cauchy_projection(y, R, o)
+
+    z1_scs = z1_scs_tilde - e
+    z2_scs = z2_scs_tilde - e
+
+    (
+        scs_sample1,
+        scs_sample2,
+        scs_acc1,
+        scs_acc2,
+        scs_stepout1,
+        scs_stepout2,
+    ) = sub_Cauchy_algs.SCS_MRCoupling_sampler(
+        n_samples,
+        proposal_std_scs,
+        R,
+        S,
+        o,
+        z1_scs.copy(),
+        z2_scs.copy(),
+        target_log_density,
+        d
+    )
+
+    # Project SCS samples back to R^d
+    scs_sample1 = scs_centered_to_euclidean(scs_sample1, R, o)
+    scs_sample2 = scs_centered_to_euclidean(scs_sample2, R, o)
+
+    dist_scs = np.linalg.norm(scs_sample1 - scs_sample2, axis=1)
+    meet_indices_scs = np.where(dist_scs <= tol)[0]
+
+    if len(meet_indices_scs) > 0:
+        meeting_times_scs.append(meet_indices_scs[0])
+    else:
+        meeting_times_scs.append(np.inf)
+
+    scs_accept_rates.append((scs_acc1, scs_acc2))
+    scs_stepout_rates.append((scs_stepout1, scs_stepout2))
+
+    if (rep + 1) % 50 == 0:
+        print(f"Finished {rep + 1}/{n_rep} repetitions")
+
+
+meeting_times_eu = np.array(meeting_times_eu)
+meeting_times_scs = np.array(meeting_times_scs)
+
+results = pd.DataFrame({
+    "meeting_time_eu": meeting_times_eu,
+    "meeting_time_scs": meeting_times_scs,
+
+    "eu_acc1": [a[0] for a in eu_accept_rates],
+    "eu_acc2": [a[1] for a in eu_accept_rates],
+
+    "scs_acc1": [a[0] for a in scs_accept_rates],
+    "scs_acc2": [a[1] for a in scs_accept_rates],
+
+    "scs_stepout1": [a[0] for a in scs_stepout_rates],
+    "scs_stepout2": [a[1] for a in scs_stepout_rates],
+})
+
+results.to_csv(
+    "/Users/bsc944/Documents/Unbiased MCMC/cauchy_coupling_tau.csv",
+    index=False
+)
 
 
 
