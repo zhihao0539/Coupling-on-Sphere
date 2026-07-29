@@ -48,6 +48,7 @@ upsilon = 10
 ## Normal prior on beta and improper prior on sigma² > 0 
 log_prior_density(beta, sigma2) = sigma2 < 0 ? -Inf : -0.5 * dot(beta, beta) / upsilon - log(sigma2)
 ## log-likelihood function associated with linear regression with Student's t-distributed residuals
+nu = 4
 log_likelihood(beta, sigma2) = sum(logpdf.(TDist(nu), (Y .- X * beta) ./ sqrt(sigma2)) .- 0.5 * log(sigma2))
 
 ## define log-posterior density function, theta = [beta; sigma2]
